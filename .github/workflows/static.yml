@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard Financeiro</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    /* Reset Básico */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body { 
+      font-family: 'Roboto', sans-serif; 
+      background-color: #f9fafb; 
+      color: #333; 
+      line-height: 1.6;
+    }
+
+    .container { 
+      max-width: 1200px; 
+      margin: 0 auto; 
+      padding: 20px; 
+      position: relative; /* Para posicionar o overlay de carregamento */
+    }
+
+    /* Top Bar */
+    .top-bar { 
+      background: linear-gradient(135deg, #1e3a8a, #3b82f6); 
+      color: white; 
+      padding: 20px 0; 
+      text-align: center; 
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      margin-bottom: 30px;
+    }
+
+    .top-bar h1 {
+      font-size: 2rem;
+      font-weight: 700;
+    }
+
+    /* Filtros */
+    .filters { 
+      display: flex; 
+      flex-wrap: wrap; 
+      gap: 20px; 
+      justify-content: space-between; 
+      align-items: flex-end;
+      margin-bottom: 30px; 
+      background-color: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    }
+
+    .filter-row {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      width: 100%;
+    }
+
+    .filter-group { 
+      display: flex; 
+      flex-direction: column; 
+      font-size: 1rem; 
+      flex: 1;
+      min-width: 150px;
+    }
+
+    .filter-group label { 
+      margin-bottom: 5px; 
+      font-weight: 500; 
+      color: #555;
+    }
+
+    select, input[type="date"], button { 
+      padding: 10px 15px; 
+      border: 1px solid #ccc; 
+      border-radius: 5px; 
+      font-size: 1rem; 
+      transition: border 0.3s, box-shadow 0.3s;
+    }
+
+    select:focus, input[type="date"]:focus {
+      border-color: #3b82f6;
+      box-shadow: 0 0 5px rgba(59, 130, 246, 0.5);
+      outline: none;
+    }
+
+    button { 
+      background-color: #3b82f6; 
+      color: white; 
+      cursor: pointer; 
+      border: none; 
+      transition: background 0.3s, transform 0.2s;
+      font-weight: 500;
+      border-radius: 5px;
+      flex: 1;
+      min-width: 120px;
+    }
+
+    button:hover { 
+      background-color: #2563eb; 
+      transform: translateY(-2px);
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    button:active {
+      transform: translateY(0);
+      box-shadow: none;
+    }
+
+    /* Cards Resumo */
+    .dashboard-cards { 
+      display: grid; 
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+      gap: 20px; 
+      margin-bottom: 30px; 
+    }
+
+    .card { 
+      background: white; 
+      border: 1px solid #e5e7eb; 
+      border-radius: 10px; 
+      padding: 20px; 
+      text-align: center; 
+      box-shadow: 0 4px 6px rgba(0,0,0,0.05); 
+      transition: transform 0.3s, box-shadow 0.3s;
+    }
+
+    .card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 8px 12px rgba(0,0,0,0.1);
+    }
+
+    .card h3 { 
+      margin-bottom: 15px; 
+      font-size: 1.1rem; 
+      color: #555;
+      font-weight: 500;
+    }
+
+    .card p { 
+      font-size: 1.8rem; 
+      color: #1e3a8a; 
+      font-weight: 700; 
+      transition: color 0.3s;
+    }
+
+    .card:hover p {
+      color: #3b82f6;
+    }
+
+    /* Gráfico */
+    #grafico-container { 
+      background: white; 
+      padding: 20px; 
+      border-radius: 10px; 
+      margin-bottom: 30px; 
+      box-shadow: 0 4px 6px rgba(0,0,0,0.05); 
+    }
+
+    /* Tabela */
+    table { 
+      width: 100%; 
+      border-collapse: collapse; 
+      font-size: 0.9rem; 
+      background-color: white;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    }
+
+    th, td { 
+      border: 1px solid #e5e7eb; 
+      padding: 12px 15px; 
+      text-align: left; 
+      transition: background-color 0.3s;
+    }
+
+    th { 
+      background-color: #f3f4f6; 
+      font-weight: 600;
+      color: #555;
+    }
+
+    tr:nth-child(even) td { 
+      background-color: #f9fafb;
+    }
+
+    tr:hover td { 
+      background-color: #f1f5f9; 
+    }
+
+    .vencido { 
+      color: #ef4444; 
+      font-weight: 600; 
+    }
+
+    .hoje { 
+      color: #10b981; 
+      font-weight: 600; 
+    }
+
+    .linha-atrasada { 
+      background-color: #fee2e2; /* Fundo vermelho suave para destacar */
+    }
+
+    /* Classe para texto vermelho */
+    .red-text {
+      color: #ef4444; /* vermelho */
+    }
+
+    /* Spinner */
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(255, 255, 255, 0.8);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      display: none; /* Oculto por padrão */
+    }
+
+    .spinner {
+      border: 8px solid #f3f3f3; /* Light grey */
+      border-top: 8px solid #3b82f6; /* Blue */
+      border-radius: 50%;
+      width: 60px;
+      height: 60px;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Responsividade */
+    @media (max-width: 768px) {
+      .filters { 
+        flex-direction: column; 
+        align-items: stretch; 
+      }
+
+      .filter-row {
+        flex-direction: column;
+        gap: 15px;
+      }
+
+      .filtro-linha1, .filtro-linha2 {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 15px;
+      }
+
+      .dashboard-cards { 
+        grid-template-columns: 1fr;
+      }
+
+      table { 
+        font-size: 0.85rem; 
+      }
+
+      .card p { 
+        font-size: 1.5rem; 
+      }
+
+      button { 
+        width: 100%; /* Botão ocupa toda a largura em dispositivos móveis */
+      }
+    }
+
+    @media (min-width: 769px) {
+      .filters {
+        flex-direction: row;
+        align-items: flex-end;
+      }
+
+      .filter-row {
+        flex-direction: row;
+        gap: 20px;
+      }
+
+      .filtro-linha1, .filtro-linha2 {
+        flex-direction: row;
+        align-items: flex-end;
+        gap: 20px;
+      }
+
+      .dashboard-cards { 
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); 
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="loading-overlay" id="loading-overlay">
+    <div class="spinner"></div>
+  </div>
+
+  <div class="container">
+    <header class="top-bar">
+      <h1>Dashboard Financeiro</h1>
+    </header>
+
+    <!-- Filtros -->
+    <div class="filters">
+      <div class="filter-row">
+        <div class="filter-group">
+          <label for="tipo">Tipo:</label>
+          <select id="tipo">
+            <option value="PAGAR">Contas a Pagar</option>
+            <option value="RECEBER" selected>Contas a Receber</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label for="situacao">Situação:</label>
+          <select id="situacao">
+            <option value="A">Abertas</option>
+            <option value="B">Baixadas</option>
+            <option value="E">Excluídas</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label id="label-data-de" for="data-de">Data de:</label>
+          <input type="date" id="data-de">
+        </div>
+        <div class="filter-group">
+          <label id="label-data-ate" for="data-ate">Data até:</label>
+          <input type="date" id="data-ate">
+        </div>
+      </div>
+      <button id="buscar-btn">Buscar</button>
+    </div>
+
+    <!-- Cards Resumo -->
+    <div class="dashboard-cards">
+      <!-- Card Removido: Total de Recebimentos -->
+      <div class="card">
+        <h3 id="card-status">Em Aberto</h3>
+        <p id="saldo-total">R$ 0,00</p>
+      </div>
+      <div class="card">
+        <h3>% de Inadimplência</h3>
+        <p id="inadimplencia">0%</p>
+      </div>
+      <div class="card" id="card-previsao">
+        <h3>Previsão p/ próx. 30 dias</h3>
+        <p id="previsao-vencimento">R$ 0,00</p>
+      </div>
+      <div class="card" id="card-atraso-medio">
+        <h3>% de doc. Atrasado (dias)</h3>
+        <p id="atraso-medio">0 dias</p>
+      </div>
+    </div>
+
+    <!-- Gráfico -->
+    <div id="grafico-container">
+      <canvas id="grafico-barras" width="400" height="200"></canvas>
+    </div>
+
+    <!-- Tabela -->
+    <h3>Contas a Receber</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Documento</th>
+          <th>Cliente</th>
+          <th>Emissão</th>
+          <th>Vencimento</th>
+          <th>Valor</th>
+          <th>Saldo</th>
+        </tr>
+      </thead>
+      <tbody id="contas-receber-body"></tbody>
+    </table>
+  </div>
+
+  <script>
+    const apiUrl = "http://sistema.totalsig.com.br:2507/FINANCEIRO";
+    const tipoInput = document.getElementById('tipo');
+    const situacaoInput = document.getElementById('situacao');
+    const dataDeInput = document.getElementById('data-de');
+    const dataAteInput = document.getElementById('data-ate');
+    const buscarBtn = document.getElementById('buscar-btn');
+    const saldoTotalElem = document.getElementById('saldo-total');
+    const inadimplenciaElem = document.getElementById('inadimplencia');
+    const previsaoVencimentoElem = document.getElementById('previsao-vencimento');
+    const atrasoMedioElem = document.getElementById('atraso-medio');
+    const contasBody = document.getElementById('contas-receber-body');
+    const graficoBarras = document.getElementById('grafico-barras').getContext('2d');
+    const loadingOverlay = document.getElementById('loading-overlay');
+    const labelDataDe = document.getElementById('label-data-de');
+    const labelDataAte = document.getElementById('label-data-ate');
+    const cardStatus = document.getElementById('card-status');
+    const cardPrevisao = document.getElementById('card-previsao');
+    const cardAtrasoMedio = document.getElementById('card-atraso-medio');
+    let chartInstance;
+
+    // Função para atualizar labels e card de status com base na Situação
+    function atualizarLabels() {
+      const situacao = situacaoInput.value;
+
+      if (situacao === 'A') { // Abertas
+        cardStatus.textContent = 'Em Aberto';
+        labelDataDe.textContent = 'Vencimento de:';
+        labelDataAte.textContent = 'Vencimento até:';
+        cardPrevisao.style.display = 'block';
+        cardAtrasoMedio.style.display = 'block';
+      } else if (situacao === 'B') { // Baixadas
+        cardStatus.textContent = 'Baixadas';
+        labelDataDe.textContent = 'Baixadas de:';
+        labelDataAte.textContent = 'Baixadas até:';
+        cardPrevisao.style.display = 'none';
+        cardAtrasoMedio.style.display = 'none';
+      } else if (situacao === 'E') { // Excluídas
+        cardStatus.textContent = 'Excluídas';
+        labelDataDe.textContent = 'Excluídas de:';
+        labelDataAte.textContent = 'Excluídas até:';
+        cardPrevisao.style.display = 'none';
+        cardAtrasoMedio.style.display = 'none';
+      }
+    }
+
+    // Adicionar listener para alterar labels ao mudar a Situação
+    situacaoInput.addEventListener('change', atualizarLabels);
+
+    // Chamar a função ao carregar a página para configurar os labels iniciais
+    window.addEventListener('DOMContentLoaded', () => {
+      atualizarLabels();
+      fetchData();
+    });
+
+    buscarBtn.addEventListener('click', fetchData);
+
+    async function fetchData() {
+      // Exibir o overlay de carregamento
+      loadingOverlay.style.display = 'flex';
+
+      const tipo = tipoInput.value;
+      const situacao = situacaoInput.value;
+      const dataDe = dataDeInput.value;
+      const dataAte = dataAteInput.value;
+
+      // Validação das datas
+      if (dataDe && dataAte && new Date(dataDe) > new Date(dataAte)) {
+        alert("A data 'De' não pode ser posterior à data 'Até'.");
+        loadingOverlay.style.display = 'none';
+        return;
+      }
+
+      let url = `${apiUrl}?TIPO=${tipo}&SITUACAO=${situacao}`;
+      if (dataDe) url += `&DATADE=${dataDe}`;
+      if (dataAte) url += `&DATAATE=${dataAte}`;
+
+      try {
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`Erro na resposta da API: ${response.statusText}`);
+        }
+        const data = await response.json();
+
+        atualizarDashboard(data);
+      } catch (error) {
+        console.error("Erro ao buscar dados:", error);
+        alert("Ocorreu um erro ao buscar os dados. Verifique o console para mais detalhes.");
+      } finally {
+        // Ocultar o overlay de carregamento
+        loadingOverlay.style.display = 'none';
+      }
+    }
+
+    function atualizarDashboard(data) {
+      const hoje = new Date();
+      const trintaDias = new Date();
+      trintaDias.setDate(hoje.getDate() + 30);
+
+      // Saldo Total
+      const saldoTotal = data.reduce((sum, item) => sum + parseFloat(item.SALDO || 0), 0);
+
+      // Taxa de Inadimplência
+      const inadimplentes = data.filter(item => new Date(item.DTVENCIMENTO) < hoje && parseFloat(item.SALDO || 0) > 0).length;
+      const taxaInadimplencia = data.length > 0 ? (inadimplentes / data.length) * 100 : 0;
+
+      // Previsão de Vencimento nos Próximos 30 Dias (Soma dos VLDOCUMENTO)
+      const previsaoVencimento = data
+        .filter(item => {
+          const vencimento = new Date(item.DTVENCIMENTO);
+          return vencimento >= hoje && vencimento <= trintaDias;
+        })
+        .reduce((sum, item) => sum + parseFloat(item.VLDOCUMENTO || 0), 0);
+
+      // % de Atraso Médio (Média de Dias de Atraso)
+      const atrasos = data
+        .filter(item => {
+          const vencimento = new Date(item.DTVENCIMENTO);
+          return vencimento < hoje && parseFloat(item.SALDO || 0) > 0;
+        })
+        .map(item => {
+          const vencimento = new Date(item.DTVENCIMENTO);
+          const diffTime = hoje - vencimento;
+          const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+          return diffDays;
+        });
+
+      const totalAtrasos = atrasos.reduce((sum, dias) => sum + dias, 0);
+      const quantidadeAtrasos = atrasos.length;
+      const atrasoMedio = quantidadeAtrasos > 0 ? (totalAtrasos / quantidadeAtrasos) : 0;
+
+      // Atualizar elementos do DOM
+      saldoTotalElem.textContent = `R$ ${saldoTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+      inadimplenciaElem.textContent = `${taxaInadimplencia.toFixed(2)}%`;
+      previsaoVencimentoElem.textContent = `R$ ${previsaoVencimento.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+      atrasoMedioElem.textContent = `${atrasoMedio.toFixed(2)} dias`;
+
+      // Adicionar classe 'red-text' ao inadimplenciaElem
+      inadimplenciaElem.classList.add('red-text');
+
+      atualizarTabela(data);
+      atualizarGrafico(data);
+    }
+
+    function atualizarTabela(data) {
+      contasBody.innerHTML = '';
+      const hoje = new Date();
+
+      data.forEach(item => {
+        const vencimento = item.DTVENCIMENTO || '';
+        const saldo = parseFloat(item.SALDO || 0);
+        const vencimentoDate = new Date(vencimento);
+        const classeLinha = (vencimentoDate < hoje && saldo > 0) ? 'linha-atrasada' : '';
+        const classeVencimento = (vencimentoDate < hoje) ? 'vencido' : (vencimentoDate.toDateString() === hoje.toDateString() ? 'hoje' : '');
+
+        const row = `
+          <tr class="${classeLinha}">
+            <td>${item.NRDOCUMENTO || '-'}</td>
+            <td>${item.NMPESSOA || '-'}</td>
+            <td>${formatarData(item.DTEMISSAO)}</td>
+            <td class="${classeVencimento}">${formatarData(vencimento)}</td>
+            <td>R$ ${parseFloat(item.VLDOCUMENTO || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+            <td>R$ ${saldo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+          </tr>
+        `;
+        contasBody.insertAdjacentHTML('beforeend', row);
+      });
+    }
+
+    function formatarData(dataStr) {
+      if (!dataStr) return '-';
+      const data = new Date(dataStr);
+      if (isNaN(data)) return '-';
+      const dia = String(data.getDate()).padStart(2, '0');
+      const mes = String(data.getMonth() + 1).padStart(2, '0');
+      const ano = data.getFullYear();
+      return `${dia}/${mes}/${ano}`;
+    }
+
+    function atualizarGrafico(data) {
+      // Obter as top 5 pessoas com maiores VLDOCUMENTO
+      const top5 = data
+        .map(item => ({ cliente: item.NMPESSOA || 'Desconhecido', valor: parseFloat(item.VLDOCUMENTO || 0) }))
+        .sort((a, b) => b.valor - a.valor)
+        .slice(0, 5);
+
+      const labels = top5.map(item => item.cliente);
+      const valores = top5.map(item => item.valor);
+
+      if (chartInstance) chartInstance.destroy();
+
+      chartInstance = new Chart(graficoBarras, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            label: 'VLDOCUMENTO',
+            data: valores,
+            backgroundColor: '#3b82f6',
+            borderRadius: 5,
+          }]
+        },
+        options: { 
+          responsive: true,
+          plugins: {
+            legend: {
+              display: false
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  let label = context.dataset.label || '';
+                  if (label) {
+                    label += ': ';
+                  }
+                  if (context.parsed.y !== null) {
+                    label += 'R$ ' + context.parsed.y.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+                  }
+                  return label;
+                }
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                callback: function(value) {
+                  return 'R$ ' + value.toLocaleString('pt-BR');
+                },
+                color: '#555',
+                font: {
+                  weight: '500'
+                }
+              },
+              grid: {
+                color: '#e5e7eb'
+              }
+            },
+            x: {
+              ticks: {
+                color: '#555',
+                font: {
+                  weight: '500'
+                }
+              },
+              grid: {
+                display: false
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // Inicializar com labels corretos e buscar dados ao carregar a página
+    window.addEventListener('DOMContentLoaded', () => {
+      atualizarLabels();
+      fetchData();
+    });
+  </script>
+</body>
+</html>
